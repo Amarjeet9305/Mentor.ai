@@ -9,7 +9,10 @@ export interface IMentorProfile extends Document {
     hourlyRate: number;
     averageRating: number;
     totalReviews: number;
-    isApproved: boolean; // Replaces auto-approvals
+    isApproved: boolean;
+    hasPaid: boolean;
+    paymentOrderId?: string;
+    paymentStatus?: "PENDING" | "SUCCESS" | "FAILED";
 }
 
 const MentorProfileSchema = new mongoose.Schema<IMentorProfile>(
@@ -22,7 +25,10 @@ const MentorProfileSchema = new mongoose.Schema<IMentorProfile>(
         hourlyRate: { type: Number, default: 50 },
         averageRating: { type: Number, default: 0 },
         totalReviews: { type: Number, default: 0 },
-        isApproved: { type: Boolean, default: false } // Default to pending approval
+        isApproved: { type: Boolean, default: false }, // Default to pending approval
+        hasPaid: { type: Boolean, default: false },
+        paymentOrderId: { type: String },
+        paymentStatus: { type: String, enum: ["PENDING", "SUCCESS", "FAILED"], default: "PENDING" }
     }
 );
 
