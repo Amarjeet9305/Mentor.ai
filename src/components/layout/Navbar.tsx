@@ -42,6 +42,18 @@ export default async function Navbar() {
                         Services
                         <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-indigo-600 scale-x-0 group-hover:scale-x-100 transition-transform origin-left rounded-full"></span>
                     </Link>
+                    {dbUser && dbUser.role === "STUDENT" && (
+                        <Link href="/become-mentor" className="relative hover:text-indigo-600 transition-colors py-2 group font-semibold text-indigo-600">
+                            Become a Mentor
+                            <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-indigo-600 scale-x-0 group-hover:scale-x-100 transition-transform origin-left rounded-full"></span>
+                        </Link>
+                    )}
+                    {dbUser && dbUser.role === "ADMIN" && (
+                        <Link href="/admin/requests" className="relative hover:text-rose-600 transition-colors py-2 group font-semibold text-rose-600">
+                            Review Requests
+                            <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-rose-600 scale-x-0 group-hover:scale-x-100 transition-transform origin-left rounded-full"></span>
+                        </Link>
+                    )}
                 </nav>
                 <div className="flex items-center gap-4">
                     {clerkUser ? (
