@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 export default function Footer() {
     return (
@@ -10,11 +11,8 @@ export default function Footer() {
             <div className="container relative mx-auto px-4 md:px-6 py-16">
                 <div className="grid gap-12 md:grid-cols-4 lg:gap-8">
                     <div className="space-y-4 md:col-span-1">
-                        <Link href="/" className="flex items-center gap-2 group w-fit">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-300">
-                                <Sparkles className="h-4 w-4" />
-                            </div>
-                            <span className="text-xl font-bold tracking-tight text-slate-900">Aura<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500">.Ai</span></span>
+                        <Link href="/" className="flex items-center gap-2 group w-fit transition-transform duration-300 hover:opacity-90">
+                            <Logo className="h-10 w-auto" />
                         </Link>
                         <p className="text-sm leading-relaxed text-slate-500 max-w-xs">
                             AI-driven career roadmaps and elite 1:1 mentorship to help you land your dream job with absolute confidence.

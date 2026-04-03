@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/button";
 import { Sparkles, LayoutDashboard } from "lucide-react";
 import { UserButton, SignInButton } from "@clerk/nextjs";
@@ -20,13 +21,8 @@ export default async function Navbar() {
             <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent"></div>
             <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6 relative">
                 <div className="flex items-center gap-2">
-                    <Link href="/" className="flex items-center gap-2 group">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition-transform duration-300">
-                            <Sparkles className="h-5 w-5" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-slate-900">
-                            Aura<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500">.Ai</span>
-                        </span>
+                    <Link href="/" className="flex items-center gap-2 group transition-transform duration-300 hover:opacity-90">
+                        <Logo className="h-11 w-auto" />
                     </Link>
                 </div>
                 <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">

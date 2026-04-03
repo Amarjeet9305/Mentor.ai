@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
 import connectToDatabase from '@/lib/mongoose';
 import { User, Booking, MentorProfile, AssessmentResult, Payment } from '@/models';
-import { GraduationCap, Briefcase, Settings, ArrowRight } from 'lucide-react';
+import { GraduationCap, Briefcase, Settings, ArrowRight, Star, MessageSquare, Eye, TrendingUp, Activity, LineChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -210,19 +210,51 @@ export default async function DashboardPage() {
                                 </div>
                             </div>
 
-                            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-                                <h2 className="text-xl font-bold text-slate-900 mb-4">Mentor Performance</h2>
+                            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm flex flex-col items-stretch">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-xl font-bold text-slate-900">Performance Overview</h2>
+                                    <span className="text-xs font-semibold px-2 py-1 bg-green-100 text-green-700 rounded-lg">Active</span>
+                                </div>
+                                
                                 <div className="grid grid-cols-2 gap-4 mb-6">
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                        <p className="text-sm text-slate-500 mb-1">Total Earnings</p>
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between transition hover:-translate-y-1 hover:shadow-sm">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <p className="text-sm text-slate-500 font-medium">Earnings</p>
+                                            <TrendingUp className="h-4 w-4 text-emerald-500" />
+                                        </div>
                                         <p className="text-2xl font-bold text-slate-900">₹{totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                                     </div>
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                        <p className="text-sm text-slate-500 mb-1">Average Rating</p>
-                                        <p className="text-2xl font-bold text-slate-900 text-amber-500">4.9 ★</p>
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between transition hover:-translate-y-1 hover:shadow-sm">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <p className="text-sm text-slate-500 font-medium">Rating</p>
+                                            <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                                        </div>
+                                        <p className="text-2xl font-bold text-slate-900">4.9</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between transition hover:-translate-y-1 hover:shadow-sm">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <p className="text-sm text-slate-500 font-medium">Reviews</p>
+                                            <MessageSquare className="h-4 w-4 text-blue-500" />
+                                        </div>
+                                        <p className="text-2xl font-bold text-slate-900">38</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between transition hover:-translate-y-1 hover:shadow-sm">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <p className="text-sm text-slate-500 font-medium">Visits</p>
+                                            <Eye className="h-4 w-4 text-purple-500" />
+                                        </div>
+                                        <p className="text-2xl font-bold text-slate-900">1,204</p>
                                     </div>
                                 </div>
-                                <Button variant="outline" className="w-full">
+                                
+                                <div className="mt-[15px] mb-6 bg-[#f4f7fc] rounded-xl flex flex-col items-center justify-center py-20 border border-[#e8edf5]">
+                                    <LineChart className="h-10 w-10 text-[#a3b7d6] mb-3" strokeWidth={2} />
+                                    <p className="text-[15px] font-semibold text-[#a3b7d6]">
+                                        Dashboard Interactive Preview
+                                    </p>
+                                </div>
+
+                                <Button variant="outline" className="w-full mt-auto">
                                     Manage Availability
                                 </Button>
                             </div>
