@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongoose";
 import { Booking, Payment, AvailabilitySlot, User, MentorProfile } from "@/models";
 import { sendBookingMail } from "@/lib/mailer";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 export async function POST(req: Request) {
   try {
@@ -156,6 +157,29 @@ export async function POST(req: Request) {
       console.log("Nodemailer sendBookingMail call completed.");
     } catch (emailError) {
       console.error("Email sending failed in verify-payment route:", emailError);
+    }
+
+    // SEND TELEGRAM NOTIFICATION SAFELY
+    try {
+      console.log("Preparing to send Telegram booking notification...");
+      const message = `🎉 New Mentorship Booking Confirmed!\n\nStudent: ${studentName}\nMentor: ${mentorName}\nDate: ${formattedDate}\nTime: ${startTime} - ${endTime}`;
+      
+      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+      if (adminChatId) {
+          await sendTelegramMessage(adminChatId, message);
+      }
+      
+      // Notify Mentor if they have linked their Telegram
+      if (mentor?.telegramId) {
+          await sendTelegramMessage(mentor.telegramId, `🎉 You have a new booking!\nStudent: ${studentName}\nDate: ${formattedDate}\nTime: ${startTime} - ${endTime}`);
+      }
+      
+      // Notify Student if they have linked their Telegram
+      if (student?.telegramId) {
+          await sendTelegramMessage(student.telegramId, `🎉 Your booking is confirmed!\nMentor: ${mentorName}\nDate: ${formattedDate}\nTime: ${startTime} - ${endTime}`);
+      }
+    } catch (telegramError) {
+      console.error("Telegram notification failed in verify-payment route:", telegramError);
     }
 
     return NextResponse.json({
