@@ -24,6 +24,7 @@ export default function InterviewPage() {
 
     // Dictation State
     const [transcript, setTranscript] = useState("");
+    const [interimTranscript, setInterimTranscript] = useState("");
     const [isRecording, setIsRecording] = useState(false);
     const isRecordingRef = useRef(false);
     
@@ -31,6 +32,7 @@ export default function InterviewPage() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const recognitionRef = useRef<any>(null);
     const synthRef = useRef<SpeechSynthesis | null>(null);
+    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
@@ -48,30 +50,56 @@ export default function InterviewPage() {
     // Re-bind video stream safely during rapid re-renders
     useEffect(() => {
         if (videoRef.current && stream && isVideoOn) {
-            videoRef.current.srcObject = stream;
+            if (videoRef.current.srcObject !== stream) {
+                videoRef.current.srcObject = stream;
+            }
+            // Explicitly play to prevent the camera feed from freezing to a black frame 
+            // when React dynamically sets the source after initial mount.
+            videoRef.current.play().catch(e => console.warn("Video play error:", e));
         }
-    }, [stream, isVideoOn, aiState, hasStarted]);
+    }, [stream, isVideoOn]);
 
     useEffect(() => {
+        let isMounted = true;
+        let localStream: MediaStream | null = null;
+
         // Initialize Webcam
         const initWebcam = async () => {
             try {
+                // Slight delay to allow previous strict-mode unmounts to fully release the camera
+                await new Promise(resolve => setTimeout(resolve, 300));
+                if (!isMounted) return;
+
                 const userStream = await navigator.mediaDevices.getUserMedia({
                     video: true,
                     audio: true
                 });
+
+                if (!isMounted) {
+                    userStream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+
+                localStream = userStream;
                 setStream(userStream);
                 streamRef.current = userStream;
             } catch (err: any) {
+                if (!isMounted) return;
                 console.warn("Media device warning (both):", err);
                 
                 // Fallback attempt: Try just audio if camera is locked/missing
                 try {
                     const audioOnlyStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    if (!isMounted) {
+                        audioOnlyStream.getTracks().forEach(track => track.stop());
+                        return;
+                    }
                     toast.success("Accessed microphone successfully, but camera is unavailable/locked.");
+                    localStream = audioOnlyStream;
                     setStream(audioOnlyStream);
                     streamRef.current = audioOnlyStream;
                 } catch (audioErr: any) {
+                    if (!isMounted) return;
                     console.warn("Audio fallback failed:", audioErr);
                     
                     if (err.name === 'NotFoundError' || err.message.includes('Requested device not found')) {
@@ -100,22 +128,26 @@ export default function InterviewPage() {
             const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
             recognitionRef.current = new SpeechRecognition();
             recognitionRef.current.continuous = true;
-            recognitionRef.current.interimResults = false;
+            recognitionRef.current.interimResults = true;
 
             recognitionRef.current.onresult = (event: any) => {
-                let currentTranscript = '';
+                let finalSegment = '';
+                let interimSegment = '';
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     if (event.results[i].isFinal) {
-                        currentTranscript += event.results[i][0].transcript + ' ';
+                        finalSegment += event.results[i][0].transcript + ' ';
+                    } else {
+                        interimSegment += event.results[i][0].transcript;
                     }
                 }
                 
-                if (currentTranscript.trim().length > 0) {
+                if (finalSegment.trim().length > 0) {
                      setTranscript(prev => {
                          const prefix = prev.trim().length > 0 ? prev.trim() + " " : "";
-                         return prefix + currentTranscript.trim();
+                         return prefix + finalSegment.trim();
                      });
                 }
+                setInterimTranscript(interimSegment);
             };
 
             recognitionRef.current.onerror = (event: any) => {
@@ -132,20 +164,34 @@ export default function InterviewPage() {
             recognitionRef.current.onend = () => {
                 // Keep trying to record if they haven't explicitly stopped it
                 if (isRecordingRef.current) {
-                    try { recognitionRef.current.start(); } catch (e) { }
+                    setTimeout(() => {
+                        try { 
+                            recognitionRef.current.start(); 
+                        } catch (e: any) { 
+                            // If auto-restart is blocked by browser, drop the ghost state so user can manually restart
+                            if (e.name !== 'InvalidStateError') {
+                                setIsRecording(false);
+                                isRecordingRef.current = false;
+                            }
+                        }
+                    }, 50);
                 }
             };
         }
 
         return () => {
-            if (streamRef.current) {
+            isMounted = false;
+            // Strict cleanup
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            } else if (streamRef.current) {
                 streamRef.current.getTracks().forEach(track => track.stop());
             }
             if (synthRef.current) {
                 synthRef.current.cancel();
             }
             if (recognitionRef.current) {
-                recognitionRef.current.stop();
+                try { recognitionRef.current.stop(); } catch(e) {}
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -166,6 +212,29 @@ export default function InterviewPage() {
         }
         return () => clearInterval(interval);
     }, [hasStarted, isEvaluating, secondsRemaining]);
+
+    // Auto-start Mic when AI finishes speaking
+    useEffect(() => {
+        if (aiState === "listening" && hasStarted && isMicOn && !isEvaluating) {
+            if (!isRecordingRef.current && recognitionRef.current) {
+                try {
+                    recognitionRef.current.start();
+                    setIsRecording(true);
+                    isRecordingRef.current = true;
+                } catch (e: any) {
+                    if (e.name === 'InvalidStateError') {
+                        setIsRecording(true);
+                        isRecordingRef.current = true;
+                    } else {
+                        // Dictation natively failed to access the system, reset UI so user isn't stuck in a 'ghost' recording state
+                        setIsRecording(false);
+                        isRecordingRef.current = false;
+                        console.warn('Dictation auto-start failed:', e);
+                    }
+                }
+            }
+        }
+    }, [aiState, hasStarted, isMicOn, isEvaluating]);
 
     const formatTime = (secs: number) => {
         const m = Math.floor(secs / 60);
@@ -214,7 +283,11 @@ export default function InterviewPage() {
 
             setCurrentQuestion(data.question);
             setMessages(prev => [...prev, { sender: 'Aura.ai', text: data.question }]);
-            speakQuestion(data.question);
+            
+            // Natural breath delay before audio starts
+            setTimeout(() => {
+                speakQuestion(data.question);
+            }, 600);
 
         } catch (error: any) {
             console.error("Error fetching question", error);
@@ -232,21 +305,25 @@ export default function InterviewPage() {
         synthRef.current.cancel(); // kill any active speech
         
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
+        utteranceRef.current = utterance; // Retain reference to prevent aggressive Chrome Garbage Collection
+        utterance.rate = 0.95;  // Slightly deliberate pacing
+        utterance.pitch = 1.05; // Slightly enhanced brightness for female voice
         
-        // Find a decent english voice if possible
+        // Advanced Voice Prioritization: Hunt for OS-level Neural/Natural voices first
         const voices = synthRef.current.getVoices();
-        const preferredVoice = voices.find(v => v.lang.includes('en-GB') || v.lang.includes('en-US') && v.name.includes('Female'));
+        const preferredVoice = 
+               voices.find(v => v.lang.includes('en-IN') && v.name.includes('Natural')) 
+            || voices.find(v => v.lang.includes('en-IN') && v.name.toLowerCase().includes('female')) 
+            || voices.find(v => v.lang.includes('en-IN')) 
+            || voices.find(v => v.lang.includes('en-GB') && v.name.includes('Natural'))
+            || voices.find(v => (v.lang.includes('en-US') || v.lang.includes('en-GB')) && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.toLowerCase().includes('female')))
+            || voices[0];
+            
         if (preferredVoice) utterance.voice = preferredVoice;
 
         utterance.onstart = () => setAiState("speaking");
         utterance.onend = () => {
             setAiState("listening");
-            // Auto start recording their answer if mic is on
-            if (isMicOn && !isRecording && hasStarted) {
-                toggleRecording();
-            }
         };
 
         synthRef.current.speak(utterance);
@@ -285,7 +362,7 @@ export default function InterviewPage() {
 
         // Stop recording
         if (isRecording && recognitionRef.current) {
-            recognitionRef.current.stop();
+            try { recognitionRef.current.stop(); } catch(e){}
             setIsRecording(false);
             isRecordingRef.current = false;
         }
@@ -301,6 +378,7 @@ export default function InterviewPage() {
         
         // Reset and Trigger next
         setTranscript("");
+        setInterimTranscript("");
         setCurrentQuestionIndex(prev => prev + 1);
         
         setTimeout(() => getNext(updatedHistory), 0); 
@@ -337,7 +415,11 @@ export default function InterviewPage() {
 
             setCurrentQuestion(data.question);
             setMessages(prev => [...prev, { sender: 'Aura.ai', text: data.question }]);
-            speakQuestion(data.question);
+            
+            // Natural breath delay before audio starts
+            setTimeout(() => {
+                speakQuestion(data.question);
+            }, 600);
 
         } catch (error: any) {
             console.error("Error fetching question", error);
@@ -390,13 +472,24 @@ export default function InterviewPage() {
 
     const toggleMic = () => {
         if (stream) {
+            const willBeOn = !isMicOn;
             stream.getAudioTracks().forEach(track => {
-                track.enabled = !isMicOn;
+                track.enabled = willBeOn;
             });
-            setIsMicOn(!isMicOn);
-            if (isRecording && isMicOn) {
-                 toggleRecording();
+            setIsMicOn(willBeOn);
+            
+            // Sync Dictation with Camera Mic button
+            if (!willBeOn) {
+                 // Mic is turning OFF
+                 if (isRecording && recognitionRef.current) {
+                     recognitionRef.current.stop();
+                     setIsRecording(false);
+                     isRecordingRef.current = false;
+                     setInterimTranscript("");
+                     toast.success("Mic paused", { id: 'dictation-toast', duration: 1500 });
+                 }
             }
+            // If turning on, the useEffect will automatically start recognition if aiState is "listening"
         }
     };
 
@@ -589,7 +682,7 @@ export default function InterviewPage() {
                         ))}
 
                         {/* Live Transcript Bubble */}
-                        {isRecording && transcript && (
+                        {isRecording && (transcript || interimTranscript) && (
                             <div className="flex w-full justify-end">
                                 <div className="flex flex-col items-end max-w-[85%]">
                                     <span className="text-xs font-medium text-slate-500 mb-1.5 px-1 flex items-center gap-2">
@@ -598,6 +691,7 @@ export default function InterviewPage() {
                                     </span>
                                     <div className="px-5 py-3.5 rounded-2xl text-[15px] leading-relaxed bg-indigo-600/40 text-slate-200 rounded-tr-sm border border-indigo-500/30">
                                         {transcript}
+                                        {interimTranscript && <span className="text-indigo-300 font-light italic ml-1 animate-pulse">{interimTranscript}</span>}
                                     </div>
                                 </div>
                             </div>
@@ -617,19 +711,6 @@ export default function InterviewPage() {
                             />
                             
                             <div className="flex sm:flex-col gap-2 shrink-0">
-                                <button
-                                    onClick={toggleRecording}
-                                    disabled={aiState === "finished" || !hasStarted}
-                                    className={`flex-1 sm:h-auto sm:py-2 px-3 rounded-xl flex items-center justify-center transition-all ${
-                                        isRecording 
-                                        ? 'bg-red-500/20 text-red-500 border border-red-500/30 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)]' 
-                                        : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200'
-                                    } disabled:opacity-50`}
-                                    title={isRecording ? "Stop Dictation" : "Start Dictation"}
-                                >
-                                    {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                                    <span className="ml-2 sm:hidden font-medium">{isRecording ? "Stop" : "Speak"}</span>
-                                </button>
                                 
                                 <button
                                     onClick={submitAnswer}
