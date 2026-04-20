@@ -19,7 +19,7 @@ export default function Home() {
               <span className="gradient-text">AI & Real Mentors</span>
             </h1>
             <p className="mx-auto max-w-2xl text-lg text-slate-600 sm:text-xl leading-relaxed">
-              Stop guessing your career path. Get a personalized AI roadmap and book 1:1 sessions with industry experts to land your dream job faster.
+              Stop guessing your career path—unlock a personalized AI roadmap and connect 1:1 with industry experts to fast-track your journey to your dream job.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link href="/assessment">
