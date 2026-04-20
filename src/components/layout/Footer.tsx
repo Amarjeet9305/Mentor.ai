@@ -1,7 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export default function Footer() {
+    const pathname = usePathname();
+
+    if (pathname.startsWith('/assessment')) {
+        return null;
+    }
     return (
         <footer className="relative border-t border-slate-200/60 bg-slate-50 overflow-hidden">
             {/* Subtle background glow */}
