@@ -1,26 +1,33 @@
-// @ts-ignore
-import TelegramBot from 'node-telegram-bot-api';
-
-const token = process.env.TELEGRAM_BOT_TOKEN;
-// @ts-ignore
-let bot: any = null;
-
-if (token) {
-    bot = new TelegramBot(token, { polling: false });
-} else {
-    console.warn("TELEGRAM_BOT_TOKEN is not set.");
-}
-
 export const sendTelegramMessage = async (telegramId: string, message: string) => {
-    if (!bot) {
-        console.log(`Telegram Bot not initialized. Skipping message to ${telegramId}: ${message}`);
+    const rawToken = process.env.TELEGRAM_BOT_TOKEN || "";
+    const token = rawToken.trim();
+    
+    if (!token) {
+        console.log(`Telegram Bot token not set. Skipping message to ${telegramId}`);
         return;
     }
 
+    const safeId = telegramId.trim();
     try {
-        await bot.sendMessage(telegramId, message);
-        console.log(`Telegram message sent to ${telegramId}`);
+        const url = `https://api.telegram.org/bot${token}/sendMessage`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: safeId,
+                text: message,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            throw new Error(`Telegram API Error ${response.status}: ${errorData}`);
+        }
+        
+        console.log(`Telegram message sent to ${safeId}`);
     } catch (error) {
-        console.error(`Failed to send Telegram message to ${telegramId}:`, error);
+        console.error(`Failed to send Telegram message to ${safeId}:`, error);
     }
 };
