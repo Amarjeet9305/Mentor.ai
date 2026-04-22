@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, Users, FileText, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Bot, Users, FileText, CheckCircle2, ArrowRight, BookOpen, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -46,7 +46,7 @@ export default function ServicesPage() {
             ],
             link: "/contact",
             popular: false
-        }
+        },
     ];
 
     return (

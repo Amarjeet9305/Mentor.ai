@@ -6,6 +6,7 @@ import { User, Booking, MentorProfile, AssessmentResult, Payment } from '@/model
 import { GraduationCap, Briefcase, Settings, ArrowRight, Star, MessageSquare, Eye, TrendingUp, Activity, LineChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import PaymentSuccessCelebration from '@/components/dashboard/PaymentSuccessCelebration';
 
 export default async function DashboardPage() {
     const clerkUser = await currentUser();
@@ -77,6 +78,7 @@ export default async function DashboardPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 py-12">
+            <PaymentSuccessCelebration />
             <div className="container mx-auto px-4 md:px-6 max-w-5xl">
 
                 {/* Dashboard Header */}

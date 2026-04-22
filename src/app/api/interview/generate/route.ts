@@ -87,9 +87,13 @@ export async function POST(req: Request) {
                  const ollamaModel = "qwen:0.5b";
 
                  const conversationHistory = history && history.length > 0 
-                      ? history.map((h: any) => `${h.role === 'user' ? 'Candidate' : 'Interviewer'}: ${h.answer}`).join('\n')
+                      ? history.map((h: any) => `Candidate: ${h.answer}`).join('\n')
                       : "This is the very first question of the interview.";
                  
+                 // Strict 4-second timeout to prevent infinite UI hanging
+                 const controller = new AbortController();
+                 const timeoutId = setTimeout(() => controller.abort(), 4000);
+
                  const ollamaResponse = await fetch(`${ollamaBaseUrl}/api/chat`, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
@@ -115,8 +119,11 @@ Output ONLY the question text.`
                          ],
                          stream: false,
                          options: { temperature: 0.2 } // Extremely low temperature to prevent creative scripts
-                     })
+                     }),
+                     signal: controller.signal
                  });
+
+                 clearTimeout(timeoutId);
 
                  if (ollamaResponse.ok) {
                      const data = await ollamaResponse.json();
